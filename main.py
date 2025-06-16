@@ -1,63 +1,253 @@
-from fastapi import FastAPI, Form, Request, status
+from http.client import HTTPException
+import uuid
+from fastapi import FastAPI, Form, Request, status, APIRouter
 import uvicorn
-
+from models import *
 
 app = FastAPI()
+
 
 @app.get("/")
 async def index(request: Request):
     print('Request for index page received')
     return "hello world"
+
 '''Loja Online'''
-@app.get("/virtual_store/cea/process_payment")
-async def index():
-    return "Pagamento processado pela C & A"
+virtual_store_router = APIRouter(tags=["Loja Online"])
 
-@app.get("/virtual_store/riachuelo/process_payment")
-async def index():
-    return "Pagamento processado pela riachuelo"
+@virtual_store_router.post("/virtual_store/cea/process_payment", response_model=PagamentoLojaOutput)
+async def a(input_data: PagamentoLojaInput):
+    transacao_id = f"TXN-LOJA-{uuid.uuid4().hex[:6]}"
+    cartao_token = f"TOKEN-CC-{uuid.uuid4().hex[:4]}"
+    output = PagamentoLojaOutput(
+        transacao_id=transacao_id,
+        pedido_id=input_data.pedido_id,
+        valor=input_data.valor_total,
+        cliente_id=input_data.cliente.id,
+        cartao_token=cartao_token
+    )
+    return output
 
-@app.get("/virtual_store/cea/delivery_product")
-async def index():
-    return "Produto entregue pela C & A"
+@virtual_store_router.post("/virtual_store/riachuelo/process_payment", response_model=PagamentoLojaOutput)
+async def b(input_data: PagamentoLojaInput):
+    transacao_id = f"TXN-LOJA-{uuid.uuid4().hex[:6]}"
+    cartao_token = f"TOKEN-CC-{uuid.uuid4().hex[:4]}"
+    output = PagamentoLojaOutput(
+        transacao_id=transacao_id,
+        pedido_id=input_data.pedido_id,
+        valor=input_data.valor_total,
+        cliente_id=input_data.cliente.id,
+        cartao_token=cartao_token
+    )
+    return output
 
-@app.get("/virtual_store/riachuelo/delivery_product")
-async def index():
-    return "Produto entregue pela Riachuelo"
+@virtual_store_router.post("/virtual_store/cea/delivery_product", response_model=EntregaLojaOutput)
+async def c(input_data: EntregaLojaInput):
+    id_entrega = f"ENT-{uuid.uuid4().hex[:6]}"
+    
+    output = EntregaLojaOutput(
+        id_entrega=id_entrega,
+        pedido_id=input_data.pedido_id,
+        transportadora="Correios"
+    )
+    
+    return output
+
+@virtual_store_router.post("/virtual_store/riachuelo/delivery_product", response_model=EntregaLojaOutput)
+async def d(input_data: EntregaLojaInput):
+    id_entrega = f"ENT-{uuid.uuid4().hex[:6]}"
+    
+    output = EntregaLojaOutput(
+        id_entrega=id_entrega,
+        pedido_id=input_data.pedido_id,
+        transportadora="Correios"
+    )
+    
+    return output
 
 '''Gateway de Pagamento'''
-@app.get("/gateway_payment/paypal/process_payment")
-async def index():
-    return "Pagamento processado pela paypal"
+gateway_router = APIRouter(tags=["Gateway de Pagamento"])
 
-@app.get("/gateway_payment/pagarme/process_payment")
-async def index():
-    return "Pagamento processado pela pagar.me"
+@gateway_router.post("/gateway_payment/paypal/process_payment", response_model=GatewayPagamentoOutput)
+async def e(input_data: GatewayPagamentoInput):
+    id_gateway = f"GW-TXN-{uuid.uuid4().hex[:6]}"
+    valor_parcela = input_data.valor / input_data.parcelas
+    
+    output = GatewayPagamentoOutput(
+        id_gateway=id_gateway,
+        status="pendente_validacao",
+        detalhes={
+            "transacao_origem": input_data.transacao_id,
+            "valor_parcelado": valor_parcela
+        }
+    )
+    
+    return output
+
+@gateway_router.post("/gateway_payment/pagarme/process_payment", response_model=GatewayPagamentoOutput)
+async def f(input_data: GatewayPagamentoInput):
+    id_gateway = f"GW-TXN-{uuid.uuid4().hex[:6]}"
+    valor_parcela = input_data.valor / input_data.parcelas
+    
+    output = GatewayPagamentoOutput(
+        id_gateway=id_gateway,
+        status="pendente_validacao",
+        detalhes={
+            "transacao_origem": input_data.transacao_id,
+            "valor_parcelado": valor_parcela
+        }
+    )
+    
+    return output
+
+@gateway_router.post("/gateway_payment/paypal/analysis", response_model=GatewayAnaliseOutput)
+async def ee(input_data: GatewayAnaliseInput):
+    id_analise = f"ANAL-GW-{uuid.uuid4().hex[:6]}"
+    
+    output = GatewayAnaliseOutput(
+        id_analise_gateway=id_analise,
+        status_preliminar="aprovado"
+    )
+    return output
+
+@gateway_router.post("/gateway_payment/pagarme/analysis", response_model=GatewayAnaliseOutput)
+async def ff(input_data: GatewayAnaliseInput):
+    id_analise = f"ANAL-GW-{uuid.uuid4().hex[:6]}"
+    
+    output = GatewayAnaliseOutput(
+        id_analise_gateway=id_analise,
+        status_preliminar="aprovado"
+    )
+    return output
 
 '''Adquirente'''
-@app.get("/aquirer/cielo/validate_payment")
-async def index():
-    return "Pagamento validado pela CIELO"
+aquirer_router = APIRouter(tags=["Adquirente"])
 
-@app.get("/aquirer/stone/validate_payment")
-async def index():
-    return "Pagamento validado pela STONE"
+@aquirer_router.post("/aquirer/cielo/validate_payment", response_model=AdquirenteOutput)
+async def g(input_data: AdquirenteInput):
+    autorizacao_adq = f"AUTH-ADQ-{uuid.uuid4().hex[:6]}"
+    output = AdquirenteOutput(
+        codigo_resposta_adq="00",
+        autorizacao_adq=autorizacao_adq,
+        id_gateway=input_data.id_gateway
+    )
+    return output
+
+@aquirer_router.post("/aquirer/stone/validate_payment", response_model=AdquirenteOutput)
+async def h(input_data: AdquirenteInput):
+    autorizacao_adq = f"AUTH-ADQ-{uuid.uuid4().hex[:6]}"
+    output = AdquirenteOutput(
+        codigo_resposta_adq="00",
+        autorizacao_adq=autorizacao_adq,
+        id_gateway=input_data.id_gateway
+    )
+    return output
 
 
 '''Anti fraude'''
-@app.get("/atifraud/rudder/validate_payment")
-async def index():
-    return "Pagamento validado pela RUDDER"
+antifraud_router = APIRouter(tags=["Anti Fraude"])
 
-@app.get("/atifraud/rudder/validate_payment")
-async def index():
-    return "Pagamento validado pela RUDDER"
+@antifraud_router.post("/atifraud/rudder/validate_payment", response_model=AntifraudeOutput)
+async def i(input_data: AntifraudeInput):
+    output = AntifraudeOutput(
+        status_antifraude="aprovado",
+        score_risco=20,
+        recomendacao="liberar"
+    )
+    
+    return output
+
+@antifraud_router.post("/atifraud/rudder/validate_payment", response_model=AntifraudeOutput)
+async def j(input_data: AntifraudeInput):
+    output = AntifraudeOutput(
+        status_antifraude="aprovado",
+        score_risco=20,
+        recomendacao="liberar"
+    )
+    
+    return output
 
 
-'''Bandeira''' #TODO
-@app.get("/flag/rudder/validate_payment")
-async def index():
-    return "Pagamento validado pela RUDDER"
+'''Bandeira''' 
+flag_router = APIRouter(tags=["Bandeira"])
+
+@flag_router.post("/flag/visa/validate_payment", response_model=BandeiraOutput)
+async def l(input_data: BandeiraInput):
+    autorizacao_bandeira = f"AUTH-BAND-{uuid.uuid4().hex[:6]}"
+    
+    output = BandeiraOutput(
+        status_bandeira="aprovado",
+        autorizacao_bandeira=autorizacao_bandeira
+    )
+    
+    return output
+
+@flag_router.post("/flag/mastercard/validate_payment", response_model=BandeiraOutput)
+async def m(input_data: BandeiraInput):
+    autorizacao_bandeira = f"AUTH-BAND-{uuid.uuid4().hex[:6]}"
+    
+    output = BandeiraOutput(
+        status_bandeira="aprovado",
+        autorizacao_bandeira=autorizacao_bandeira
+    )
+    
+    return output
+
+'''Emissor'''
+emissor_router = APIRouter(tags=["Emissor"])
+
+@emissor_router.post("/issuing/bradesco/validate_payment", response_model=EmissorOutput)
+async def n(input_data: EmissorInput):
+    codigo_autorizacao_final = f"AUTH-EMI-{uuid.uuid4().hex[:6]}"
+    
+    output = EmissorOutput(
+        status_emissor="aprovado",
+        codigo_autorizacao_final=codigo_autorizacao_final
+    )
+    
+    return output
+
+@emissor_router.post("/issuing/santander/validate_payment", response_model=EmissorOutput)
+async def o(input_data: EmissorInput):
+    codigo_autorizacao_final = f"AUTH-EMI-{uuid.uuid4().hex[:6]}"
+    
+    output = EmissorOutput(
+        status_emissor="aprovado",
+        codigo_autorizacao_final=codigo_autorizacao_final
+    )
+    
+    return output
+
+'''Transportadora'''
+transporter_router = APIRouter(tags=["Transportadora"])
+
+@transporter_router.post("/transporter/correios/delivery_item", response_model=TransportadoraOutput)
+async def p(input_data: TransportadoraInput):
+    output = TransportadoraOutput(
+        status="em_transito",
+        codigo_rastreio=f"TRACK-{uuid.uuid4().hex[:6]}",
+        previsao_entrega=date.today() + timedelta(days=7)
+    )
+    return output
+
+@transporter_router.post("/transporter/loggi/delivery_item", response_model=TransportadoraOutput)
+async def q(input_data: TransportadoraInput):
+    
+    output = TransportadoraOutput(
+        status="em_transito",
+        codigo_rastreio=f"TRACK-{uuid.uuid4().hex[:6]}",
+        previsao_entrega=date.today() + timedelta(days=7)
+    )
+    
+    return output
+
+app.include_router(virtual_store_router)
+app.include_router(gateway_router)
+app.include_router(aquirer_router)
+app.include_router(antifraud_router)
+app.include_router(flag_router)
+app.include_router(emissor_router)
+app.include_router(transporter_router)
 
 if __name__ == '__main__':
     uvicorn.run('main:app', host='0.0.0.0', port=8000)

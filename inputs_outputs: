@@ -1,0 +1,202 @@
+1. Processamento do pagamento pela Loja Virtual
+Input:
+
+json
+{
+  "pedido_id": "ORD-12345",
+  "valor_total": 1500.00,
+  "itens": [
+    {"produto_id": "PROD-001", "quantidade": 2}
+  ],
+  "cliente": {
+    "id": "CLI-7788",
+    "email": "cliente@exemplo.com"
+  },
+  "cartao": {
+    "numero": "**** **** **** 1234",
+    "validade": "12/2025"
+  }
+}
+Output (para Gateway):
+
+json
+{
+  "transacao_id": "TXN-LOJA-9876",
+  "pedido_id": "ORD-12345",
+  "valor": 1500.00,
+  "cliente_id": "CLI-7788",
+  "cartao_token": "TOKEN-CC-5566"
+}
+2. Processamento pela Gateway-de-Pagamento
+Input (usa transacao_id e cartao_token do passo 1):
+
+json
+{
+  "gateway_request_id": "GW-REQ-20230617",
+  "transacao_id": "TXN-LOJA-9876",
+  "valor": 1500.00,
+  "cartao_token": "TOKEN-CC-5566",
+  "parcelas": 3
+}
+Output (para Adquirente):
+
+json
+{
+  "id_gateway": "GW-TXN-1122",
+  "codigo_autorizacao": null,
+  "status": "pendente_validacao",
+  "detalhes": {
+    "transacao_origem": "TXN-LOJA-9876",
+    "valor_parcelado": 500.00
+  }
+}
+3. Validação pelo Adquirente
+Input (usa id_gateway do passo 2):
+
+json
+{
+  "requisicao_adquirente": "ADQ-REQ-4455",
+  "id_gateway": "GW-TXN-1122",
+  "valor": 1500.00
+}
+Output (para Bandeira):
+
+json
+{
+  "codigo_resposta_adq": "00",
+  "autorizacao_adq": "AUTH-ADQ-3344",
+  "id_gateway": "GW-TXN-1122"
+}
+4. Validação pela Bandeira
+Input (usa autorizacao_adq do passo 3):
+
+json
+{
+  "requisicao_bandeira": "BAND-REQ-6677",
+  "codigo_autorizacao": "AUTH-ADQ-3344",
+  "dados_cartao": "TOKEN-CC-5566"
+}
+Output (para Emissor):
+
+json
+{
+  "status_bandeira": "aprovado",
+  "codigo_retorno_bandeira": "AP200",
+  "autorizacao_bandeira": "AUTH-BAND-8899"
+}
+5. Validação pelo Emissor
+Input (usa autorizacao_bandeira do passo 4):
+
+json
+{
+  "requisicao_emissor": "EMI-REQ-9911",
+  "autorizacao_bandeira": "AUTH-BAND-8899",
+  "valor_parcela": 500.00
+}
+Output (para Gateway):
+
+json
+{
+  "status_emissor": "aprovado",
+  "codigo_autorizacao_final": "AUTH-EMI-2233",
+  "mensagem": "Transação liberada"
+}
+6. Análise pelo Gateway
+Input (usa id_gateway do passo 2 e codigo_autorizacao_final do passo 5):
+
+json
+{
+  "id_gateway": "GW-TXN-1122",
+  "autorizacao_emissor": "AUTH-EMI-2233",
+  "dados_risco": {
+    "score_adquirente": 75,
+    "historico_cliente": "novo"
+  }
+}
+Output (para Antifraude):
+
+json
+{
+  "id_analise_gateway": "ANAL-GW-5566",
+  "status_preliminar": "aprovado",
+  "codigo_autorizacao": "AUTH-EMI-2233",
+  "id_gateway": "GW-TXN-1122"
+}
+7. Análise pelo Antifraude
+Input (usa id_gateway do passo 6):
+
+json
+{
+  "requisicao_antifraude": "AF-REQ-7788",
+  "id_gateway": "GW-TXN-1122",
+  "dados_cliente": {
+    "email": "cliente@exemplo.com",
+    "ip": "189.222.111.44"
+  }
+}
+Output (para Loja Virtual):
+
+json
+{
+  "id_analise_af": "AF-RES-1122",
+  "status_antifraude": "aprovado",
+  "score_risco": 20,
+  "id_gateway": "GW-TXN-1122",
+  "recomendacao": "liberar"
+}
+8. Realizar Entrega pela Loja Virtual
+Input (usa pedido_id do passo 1 e id_gateway do passo 2):
+
+json
+{
+  "pedido_id": "ORD-12345",
+  "id_gateway": "GW-TXN-1122",
+  "endereco_entrega": {
+    "cep": "22000-000",
+    "logradouro": "Rua Exemplo, 123"
+  },
+  "itens": [
+    {"produto_id": "PROD-001", "quantidade": 2}
+  ]
+}
+Output (para Transportadora):
+
+json
+{
+  "id_entrega": "ENT-3344",
+  "pedido_id": "ORD-12345",
+  "transportadora": "Correios",
+  "codigo_rastreio": null
+}
+9. Realizar Entrega pela Transportadora
+Input (usa id_entrega do passo 8):
+
+json
+{
+  "id_entrega": "ENT-3344",
+  "dimensoes": {
+    "peso_kg": 0.5,
+    "largura_cm": 20
+  }
+}
+Output Final:
+
+json
+{
+  "id_entrega": "ENT-3344",
+  "status": "em_transito",
+  "codigo_rastreio": "TRACK-123456",
+  "previsao_entrega": "2023-06-25"
+}
+Chaves de Relacionamento:
+pedido_id (Passo 1 → Passo 8)
+
+id_gateway (Passo 2 → Passos 3, 6, 7, 8)
+
+autorizacao_adq (Passo 3 → Passo 4)
+
+autorizacao_bandeira (Passo 4 → Passo 5)
+
+id_entrega (Passo 8 → Passo 9)
+
+Essa estrutura garante que cada etapa dependa de dados críticos gerados anteriormente, simulando um fluxo realista de integração entre sistemas.
