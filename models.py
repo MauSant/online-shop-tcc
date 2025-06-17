@@ -28,6 +28,8 @@ class PagamentoLojaOutput(BaseModel):
     cliente_id: str
     cartao_token: str
 
+    
+
 # Passo 2: Gateway-de-Pagamento
 class GatewayPagamentoInput(BaseModel):
     transacao_id: str
@@ -81,13 +83,22 @@ class GatewayAnaliseOutput(BaseModel):
 class AntifraudeInput(BaseModel):
     id_gateway: str
     email_cliente: str
+    ip: str
 
 class AntifraudeOutput(BaseModel):
     status_antifraude: str
     score_risco: int
     recomendacao: str
 
-# Passo 8: Entrega Loja
+# Passo 8: Fim gateway
+class GatewayFinalInput(BaseModel):
+    status_antifraude: str
+
+class GatewayFinalOutput(BaseModel):
+    output: str
+
+
+# Passo 9: Entrega Loja
 class EnderecoEntrega(BaseModel):
     cep: str
     logradouro: str
@@ -101,9 +112,8 @@ class EntregaLojaInput(BaseModel):
 class EntregaLojaOutput(BaseModel):
     id_entrega: str
     pedido_id: str
-    transportadora: str
 
-# Passo 9: Transportadora
+# Passo 10: Transportadora
 class Dimensoes(BaseModel):
     peso_kg: float
     largura_cm: int
@@ -116,3 +126,15 @@ class TransportadoraOutput(BaseModel):
     status: str
     codigo_rastreio: str
     previsao_entrega: date
+    id_entrega: str
+
+# Passo 11: Loja online final
+
+class LojaFinalInput(BaseModel):
+    id_entrega: str
+    pedido_id: str
+    status_entrega: str
+
+class LojaFinalOutput(BaseModel):
+    status: str
+    output: str

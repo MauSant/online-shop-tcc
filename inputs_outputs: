@@ -129,11 +129,10 @@ json
 {
   "requisicao_antifraude": "AF-REQ-7788",
   "id_gateway": "GW-TXN-1122",
-  "dados_cliente": {
-    "email": "cliente@exemplo.com",
-    "ip": "189.222.111.44"
-  }
+  "email_cliente": "cliente@exemplo.com",
+  "ip": "189.222.111.44"
 }
+
 Output (para Loja Virtual):
 
 json
@@ -144,7 +143,17 @@ json
   "id_gateway": "GW-TXN-1122",
   "recomendacao": "liberar"
 }
-8. Realizar Entrega pela Loja Virtual
+8. Finaliza gateway
+input (use status_antifraude do passo 7)
+{
+  "status_antifraude": "aprovado"
+}
+
+output
+{
+  "output": "Validação completa"
+}
+9. Realizar Entrega pela Loja Virtual
 Input (usa pedido_id do passo 1 e id_gateway do passo 2):
 
 json
@@ -165,10 +174,9 @@ json
 {
   "id_entrega": "ENT-3344",
   "pedido_id": "ORD-12345",
-  "transportadora": "Correios",
   "codigo_rastreio": null
 }
-9. Realizar Entrega pela Transportadora
+10. Realizar Entrega pela Transportadora
 Input (usa id_entrega do passo 8):
 
 json
@@ -186,17 +194,36 @@ json
   "id_entrega": "ENT-3344",
   "status": "em_transito",
   "codigo_rastreio": "TRACK-123456",
-  "previsao_entrega": "2023-06-25"
+  "previsao_entrega": "2023-06-25",
 }
-Chaves de Relacionamento:
-pedido_id (Passo 1 → Passo 8)
 
-id_gateway (Passo 2 → Passos 3, 6, 7, 8)
+11. Finalizar compra
+Input (usa id_entrega do passo 8 & pedido_id do passo 1 e status do passo 9):
+{
+  "id_entrega": "ENT-3344",
+  "pedido_id": "ORD-12345",
+  "status_entrega": "em_transito"
+}
+
+Output Final:
+{
+  "status":"em_transito",
+  "output": "site atualizado"
+}
+
+
+
+Chaves de Relacionamento:(not updated. Do not trust)
+
+pedido_id (Passo 1 → Passo 9, 11)
+
+id_gateway (Passo 2 → Passos 3, 6, 7, 9)
 
 autorizacao_adq (Passo 3 → Passo 4)
 
 autorizacao_bandeira (Passo 4 → Passo 5)
 
-id_entrega (Passo 8 → Passo 9)
+id_entrega (Passo 9 → Passo 10, 11)
 
-Essa estrutura garante que cada etapa dependa de dados críticos gerados anteriormente, simulando um fluxo realista de integração entre sistemas.
+status (Passo 10 → Passo 11)
+
